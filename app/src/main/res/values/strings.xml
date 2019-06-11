@@ -3,4 +3,6 @@
     <string name="title">title</string>
     <string name="description">description</string>
     <string name="save">Save</string>
+    <string name="search">Search</string>
+    <string name="agenda">Agenda</string>
 </resources>

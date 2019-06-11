@@ -6,23 +6,28 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.gvn.demojetpack.database.AppDatabase
 import com.gvn.demojetpack.models.Note
 import kotlinx.android.synthetic.main.activity_main.*
 import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProviders
 import com.gvn.demojetpack.ui.note_detail.NoteDetailActivity
 import com.gvn.demojetpack.R
 import com.gvn.demojetpack.databinding.ActivityMainBinding
 
 
-class MainActivity : AppCompatActivity(), NoteAdapterCallBack {
+class MainActivity : AppCompatActivity(), NoteAdapterCallBack, ViewListener {
 
     private var notes: MutableList<Note> = ArrayList()
     private var adapter: NoteAdapter? = null
     private var binding: ActivityMainBinding? = null
     private var handlers: MyClickHandlers? = null
+    private var viewModel: MainViewModel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,8 +44,8 @@ class MainActivity : AppCompatActivity(), NoteAdapterCallBack {
     }
 
     private fun getData() {
-        val list = AppDatabase.getInstance(this)?.noteDao()?.getAllNotes()
-        list?.let { notes.addAll(it) }
+        viewModel = ViewModelProviders.of(this).get(MainViewModel::class.java)
+        viewModel?.getAllNotes()
     }
 
     private fun initRecyclerView() {
@@ -48,6 +53,7 @@ class MainActivity : AppCompatActivity(), NoteAdapterCallBack {
 
         recyclerView.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
+            setHasFixedSize(true)
             adapter = this@MainActivity.adapter
         }
     }
@@ -55,10 +61,11 @@ class MainActivity : AppCompatActivity(), NoteAdapterCallBack {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 1 && resultCode == Activity.RESULT_OK) {
-            notes.clear()
-            val list = AppDatabase.getInstance(this)?.noteDao()?.getAllNotes()
-            list?.let { notes.addAll(it) }
-            adapter?.notifyDataSetChanged()
+//            notes.clear()
+//            val list = AppDatabase.getInstance(this)?.noteDao()?.getAllNotes()
+//            list?.let { notes.addAll(it) }
+//            adapter?.notifyDataSetChanged()
+            viewModel?.getAllNotes()
         }
     }
 
@@ -72,16 +79,38 @@ class MainActivity : AppCompatActivity(), NoteAdapterCallBack {
         AlertDialog.Builder(this)
             .setTitle("Do you want delete this?")
             .setPositiveButton("Yes") { dialog, _ ->
-                AppDatabase.getInstance(this)?.noteDao()?.deleteNote(item)
-                notes.clear()
-                val list = AppDatabase.getInstance(this)?.noteDao()?.getAllNotes()
-                list?.let { notes.addAll(it) }
-                adapter?.notifyDataSetChanged()
+                viewModel?.deleteNote(item)
                 dialog.dismiss()
             }
             .setNegativeButton("No", null)
             .setIcon(android.R.drawable.ic_dialog_alert)
             .show()
+    }
+
+    override fun onGetNoteSuccess(liveNotes: List<Note>) {
+        Log.d("MainActivity", "onGetNoteSuccess")
+//        liveNotes.observe(this, Observer<List<Note>> { data ->
+            notes.clear()
+            notes.addAll(liveNotes)
+            adapter?.notifyDataSetChanged()
+//        })
+    }
+
+    override fun onGetNoteError() {
+        Toast.makeText(this, "Data error", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onDeleteSuccess() {
+        Toast.makeText(this, "Delete success", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onDeleteError() {
+        Toast.makeText(this, "Delete error", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        viewModel?.dispose()
     }
 
     companion object {
